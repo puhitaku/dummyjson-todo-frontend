@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<meta charset="utf-8"/>
+<title>DummyJSON Todos Demo</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 680px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 1rem;
+  }
+
+  form {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1rem;
+  }
+
+  input[type=text] {
+    flex: 1;
+    padding: .4rem .6rem;
+  }
+
+  button {
+    padding: .4rem .8rem;
+    cursor: pointer;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .2rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  li.done span {
+    opacity: .6;
+    text-decoration: line-through;
+  }
+
+  .id {
+    color: #888;
+    font-size: .75rem;
+    margin-left: auto;
+  }
+</style>
+
+<body>
+<h1>DummyJSON Todos</h1>
+
+<form id="add-form">
+  <input id="new-title" type="text" placeholder="New todo…" required/>
+  <button>Add</button>
+</form>
+
+<ul id="list"></ul>
+</body>
+
+<script>
+  const API = 'https://dummyjson.com/todos';
+  const listEl = document.getElementById('list');
+  const form = document.getElementById('add-form');
+  const titleInput = document.getElementById('new-title');
+
+  async function fetchTodos() {
+    const res = await fetch(API);
+    const data = await res.json();
+    render(data.todos);
+  }
+
+  function render(todos) {
+    listEl.innerHTML = '';
+    todos.forEach(t => listEl.appendChild(row(t)));
+  }
+
+  function row(todo) {
+    const li = document.createElement('li');
+    li.dataset.id = todo.id;
+    if (todo.completed) li.classList.add('done');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = todo.completed;
+    cb.addEventListener('change', () => toggle(todo.id, cb.checked));
+
+    const span = document.createElement('span');
+    span.textContent = todo.todo;
+
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.title = 'Delete';
+    del.addEventListener('click', () => remove(todo.id, li));
+
+    const id = document.createElement('span');
+    id.className = 'id';
+    id.textContent = `#${todo.id}`;
+
+    li.append(cb, span, del, id);
+    return li;
+  }
+
+  async function add(title) {
+    const res = await fetch(API + '/add', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({todo: title, completed: false, userId: 1})
+    });
+    const todo = await res.json();
+    listEl.prepend(row(todo));
+  }
+
+  async function toggle(id, completed) {
+    await fetch(`${API}/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({completed})
+    });
+    const li = listEl.querySelector(`li[data-id="${id}"]`);
+    li.classList.toggle('done', completed);
+  }
+
+  async function remove(id, li) {
+    await fetch(`${API}/${id}`, {method: 'DELETE'});
+    li.remove();
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const v = titleInput.value.trim();
+    if (!v) return;
+    add(v);
+    titleInput.value = '';
+  });
+
+  fetchTodos();
+</script>
